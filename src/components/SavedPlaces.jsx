@@ -1,97 +1,77 @@
 import { useEffect, useState } from 'react';
-import { fetchPlaces, savePlace, deletePlace, fetchWeather } from '../lib/api';
-import { getWeatherEmoji } from '../lib/weatherIcons';
+import { Trash2, MapPin } from 'lucide-react';
+import { fetchPlaces, deletePlace, fetchWeather } from '../lib/api';
+import { getWeatherLabel } from '../lib/weatherIcons';
+import WeatherIcon from './WeatherIcon';
 import LoadingSpinner from './LoadingSpinner';
 
 export default function SavedPlaces({ onSelectPlace }) {
   const [places, setPlaces] = useState([]);
-  const [weather, setWeather] = useState({});
+  const [weathers, setWeathers] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    loadPlaces();
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  async function loadPlaces() {
+  async function load() {
     try {
       setLoading(true);
       const data = await fetchPlaces();
       setPlaces(data);
-      loadWeatherForPlaces(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+      const wx = await Promise.allSettled(data.map(p => fetchWeather(p.lat, p.lon)));
+      const map = {};
+      wx.forEach((r, i) => { if (r.status === 'fulfilled') map[data[i].id] = r.value; });
+      setWeathers(map);
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); }
   }
 
-  async function loadWeatherForPlaces(places) {
-    const results = await Promise.allSettled(
-      places.map((p) => fetchWeather(p.lat, p.lon))
-    );
-    const map = {};
-    results.forEach((r, i) => {
-      if (r.status === 'fulfilled') map[places[i].id] = r.value;
-    });
-    setWeather(map);
-  }
-
-  async function handleDelete(e, id) {
+  async function onDelete(e, id) {
     e.stopPropagation();
-    try {
-      await deletePlace(id);
-      setPlaces((prev) => prev.filter((p) => p.id !== id));
-      setWeather((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-    } catch (err) {
-      alert(err.message);
-    }
+    await deletePlace(id).catch(() => {});
+    setPlaces(p => p.filter(x => x.id !== id));
   }
 
-  if (loading) return <LoadingSpinner size="sm" label="Loading places…" />;
-  if (error) return <p className="text-red-400 text-sm p-2">{error}</p>;
+  if (loading) return <LoadingSpinner size="sm" label="Loading places" />;
+  if (error) return <p className="text-red-400 text-xs p-2">{error}</p>;
 
-  if (places.length === 0) {
-    return (
-      <div className="text-center py-6 text-gray-500">
-        <p className="text-3xl mb-2">📍</p>
-        <p className="text-sm">No saved places yet.</p>
-        <p className="text-xs mt-1">Click the map to add some!</p>
+  if (!places.length) return (
+    <div className="flex flex-col items-center justify-center py-8 text-center">
+      <div className="w-10 h-10 rounded-xl bg-slate-800/60 flex items-center justify-center mb-3">
+        <MapPin size={18} className="text-slate-600" strokeWidth={1.5} />
       </div>
-    );
-  }
+      <p className="text-slate-500 text-xs leading-relaxed">No saved places yet.<br />Click the map to explore.</p>
+    </div>
+  );
 
   return (
-    <div className="space-y-2">
-      {places.map((place) => {
-        const w = weather[place.id];
-        const code = w?.current_weather?.weathercode;
-        const temp = w ? Math.round(w.current_weather.temperature) : null;
+    <div className="space-y-1.5">
+      {places.map(place => {
+        const wx = weathers[place.id];
+        const code = wx?.current_weather?.weathercode;
+        const temp = wx ? Math.round(wx.current_weather.temperature) : null;
 
         return (
           <button
             key={place.id}
             onClick={() => onSelectPlace(place)}
-            className="w-full flex items-center justify-between p-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/70 border border-gray-700/40 hover:border-gray-600/60 transition-all text-left group animate-slide-up"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-800/50 border border-transparent hover:border-white/[0.06] transition-all duration-200 text-left group"
           >
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xl">{code != null ? getWeatherEmoji(code) : '📍'}</span>
-              <span className="text-white text-sm font-medium truncate">{place.city_name}</span>
+            {code != null
+              ? <WeatherIcon code={code} size={28} className="flex-shrink-0" />
+              : <MapPin size={18} className="text-slate-600 flex-shrink-0" strokeWidth={1.5} />
+            }
+            <div className="flex-1 min-w-0">
+              <p className="text-slate-200 text-sm font-medium truncate">{place.city_name}</p>
+              {code != null && <p className="text-slate-500 text-xs truncate">{getWeatherLabel(code)}</p>}
             </div>
             <div className="flex items-center gap-2">
-              {temp != null && (
-                <span className="text-gray-300 text-sm font-semibold">{temp}°C</span>
-              )}
+              {temp != null && <span className="text-slate-300 text-sm font-semibold">{temp}°</span>}
               <button
-                onClick={(e) => handleDelete(e, place.id)}
-                className="text-gray-600 hover:text-red-400 transition-colors p-1 rounded opacity-0 group-hover:opacity-100"
-                title="Remove place"
+                onClick={e => onDelete(e, place.id)}
+                className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 p-1 rounded-lg hover:bg-red-400/10 transition-all"
               >
-                ✕
+                <Trash2 size={13} />
               </button>
             </div>
           </button>
@@ -101,4 +81,4 @@ export default function SavedPlaces({ onSelectPlace }) {
   );
 }
 
-export { savePlace };
+export { deletePlace };

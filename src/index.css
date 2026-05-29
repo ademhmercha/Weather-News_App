@@ -3,72 +3,73 @@
 @tailwind utilities;
 
 @layer base {
-  * {
-    box-sizing: border-box;
-  }
+  *, *::before, *::after { box-sizing: border-box; }
 
   html {
     font-family: 'Inter', system-ui, sans-serif;
+    font-feature-settings: 'cv02','cv03','cv04','cv11';
     scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
   }
 
-  body {
-    @apply bg-gray-950 text-white antialiased;
+  body { @apply bg-slate-950 text-slate-100; }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-slate-700 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-slate-600; }
+}
+
+@layer components {
+  .glass {
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
   }
 
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  .glass-raised {
+    background: rgba(20, 30, 52, 0.60);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.09);
   }
 
-  ::-webkit-scrollbar-track {
-    @apply bg-gray-900;
+  .input-field {
+    @apply w-full bg-slate-900/70 border border-slate-700/40 focus:border-blue-500/60
+           rounded-xl px-4 py-3 text-slate-100 placeholder-slate-600
+           text-sm outline-none transition-all duration-200;
   }
 
-  ::-webkit-scrollbar-thumb {
-    @apply bg-gray-700 rounded-full;
+  .btn-primary {
+    @apply w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700
+           text-white font-semibold py-3 rounded-xl transition-colors duration-200
+           disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-600;
+  .stat-chip {
+    @apply flex flex-col gap-1 bg-black/20 rounded-xl p-3;
   }
 }
 
-@layer utilities {
-  .line-clamp-1 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
-  }
-  .line-clamp-2 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
-}
-
-/* Leaflet dark map overrides */
-.leaflet-container {
-  background: #0f172a !important;
-}
-
-.leaflet-tile-pane {
-  filter: brightness(0.7) saturate(0.8) hue-rotate(10deg);
-}
-
+/* ── Leaflet dark overrides ───────────────────────────────────── */
+.leaflet-container { background: #040810 !important; }
+.leaflet-tile-pane { filter: brightness(0.65) saturate(0.7) hue-rotate(5deg); }
 .leaflet-control-attribution {
-  background: rgba(15, 23, 42, 0.8) !important;
+  background: rgba(4, 8, 16, 0.8) !important;
   color: #64748b !important;
+  font-size: 10px !important;
 }
-
 .leaflet-control-zoom a {
-  background: #1e293b !important;
-  color: #e2e8f0 !important;
-  border-color: #334155 !important;
+  background: #0f172a !important;
+  color: #94a3b8 !important;
+  border-color: rgba(255,255,255,0.08) !important;
 }
-
-.leaflet-control-zoom a:hover {
-  background: #334155 !important;
+.leaflet-control-zoom a:hover { background: #1e293b !important; color: #f1f5f9 !important; }
+.leaflet-popup-content-wrapper {
+  background: #0f172a !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  color: #f1f5f9 !important;
+  border-radius: 12px !important;
 }
+.leaflet-popup-tip { background: #0f172a !important; }
