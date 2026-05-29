@@ -1,6 +1,16 @@
+function getUserId(token) {
+  try {
+    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(Buffer.from(base64, 'base64').toString('utf-8'));
+    return payload.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function handler(req, res) {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Missing Authorization header' });
   }
 
@@ -32,10 +42,13 @@ export default async function handler(req, res) {
       if (!city_name || lat == null || lon == null) {
         return res.status(400).json({ error: 'city_name, lat, lon required' });
       }
+      const user_id = getUserId(token);
+      if (!user_id) return res.status(401).json({ error: 'Invalid token' });
+
       const r = await fetch(base, {
         method: 'POST',
         headers: { ...headers, Prefer: 'return=representation' },
-        body: JSON.stringify({ city_name, lat, lon }),
+        body: JSON.stringify({ city_name, lat, lon, user_id }),
       });
       const data = await r.json();
       if (!r.ok) return res.status(r.status).json({ error: data.message || 'DB error' });
