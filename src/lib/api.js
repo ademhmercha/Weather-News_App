@@ -22,10 +22,11 @@ export async function geocodeSearch(query) {
 }
 
 export async function detectCityFromIP() {
-  const res = await fetch('https://ip-api.com/json/?fields=city,lat,lon,status');
+  const res = await fetch('https://ipinfo.io/json');
   const data = await res.json();
-  if (data.status !== 'success') throw new Error('IP location failed');
-  return { city: data.city, lat: data.lat, lon: data.lon };
+  if (!data.city) throw new Error('IP location failed');
+  const [lat, lon] = (data.loc || '0,0').split(',').map(Number);
+  return { city: data.city, lat, lon };
 }
 
 async function authFetch(path, options = {}) {
