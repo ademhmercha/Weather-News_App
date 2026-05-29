@@ -63,7 +63,7 @@ export default function MapPage() {
         setMyLocation({ lat: loc.lat, lon: loc.lon, city: loc.city });
         setFlyTarget({ center: [loc.lat, loc.lon], zoom: 10 });
       })
-      .catch(() => setFlyTarget({ center: [20, 0], zoom: 2 }))
+      .catch(() => setFlyTarget({ center: [33.8439, 9.4], zoom: 7 }))
       .finally(() => setLocating(false));
   }, []);
 

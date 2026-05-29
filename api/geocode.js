@@ -7,7 +7,7 @@ export default async function handler(req, res) {
 
   const url = new URL('https://geocoding-api.open-meteo.com/v1/search');
   url.searchParams.set('name', q);
-  url.searchParams.set('count', '6');
+  url.searchParams.set('count', '10');
   url.searchParams.set('language', 'en');
   url.searchParams.set('format', 'json');
 
@@ -16,12 +16,16 @@ export default async function handler(req, res) {
     if (!response.ok) throw new Error(`Geocoding error: ${response.status}`);
     const data = await response.json();
 
-    const results = (data.results || []).map(r => ({
-      name: [r.name, r.admin1, r.country].filter(Boolean).join(', '),
-      city: r.name,
-      lat: r.latitude,
-      lon: r.longitude,
-    }));
+    // Tunisia only — country_code TN
+    const results = (data.results || [])
+      .filter(r => r.country_code === 'TN')
+      .slice(0, 5)
+      .map(r => ({
+        name: [r.name, r.admin1].filter(Boolean).join(', ') + ' — Tunisia',
+        city: r.name,
+        lat: r.latitude,
+        lon: r.longitude,
+      }));
 
     res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=3600');
     return res.json(results);

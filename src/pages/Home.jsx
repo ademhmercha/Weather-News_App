@@ -44,7 +44,7 @@ export default function Home() {
     detectCityFromIP()
       .then(loc => { setLocation(loc); loadData(loc); })
       .catch(() => {
-        const loc = { city: 'London', lat: 51.5074, lon: -0.1278 };
+        const loc = { city: 'Tunis', lat: 36.8065, lon: 10.1815, country: 'Tunisia' };
         setLocation(loc); loadData(loc);
       });
   }, [loadData]);
