@@ -23,13 +23,46 @@ export async function geocodeSearch(query) {
   return apiFetch(`/api/geocode?q=${encodeURIComponent(query)}`);
 }
 
-export async function detectCityFromIP() {
-  const res = await fetch('https://ipinfo.io/json');
-  const data = await res.json();
-  if (!data.city) throw new Error('IP location failed');
-  const [lat, lon] = (data.loc || '0,0').split(',').map(Number);
-  return { city: data.city, lat, lon };
+async function reverseGeocodeCity(lat, lon) {
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
+      { headers: { 'User-Agent': 'WeatherNewsApp/1.0' } }
+    );
+    const d = await r.json();
+    const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || d.display_name?.split(',')[0];
+    const country = d.address?.country || '';
+    return { city, country };
+  } catch {
+    return { city: `${lat.toFixed(2)},${lon.toFixed(2)}`, country: '' };
+  }
 }
+
+export async function detectLocation() {
+  // 1. Browser Geolocation (most accurate, not blocked by ad blockers)
+  if (typeof navigator !== 'undefined' && navigator.geolocation) {
+    try {
+      const pos = await new Promise((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 6000 })
+      );
+      const { latitude: lat, longitude: lon } = pos.coords;
+      const { city, country } = await reverseGeocodeCity(lat, lon);
+      return { city, lat, lon, country };
+    } catch { /* denied or timed out — fall through */ }
+  }
+
+  // 2. Server-side IP detection (bypasses ad blockers)
+  try {
+    const data = await apiFetch('/api/detect-city');
+    return { city: data.city, lat: data.lat, lon: data.lon, country: data.country || '' };
+  } catch { /* fall through */ }
+
+  // 3. Last resort
+  throw new Error('Could not detect location');
+}
+
+// Keep old name as alias for backward compat
+export const detectCityFromIP = detectLocation;
 
 async function authFetch(path, options = {}) {
   const token = await getAccessToken();
@@ -39,7 +72,7 @@ async function authFetch(path, options = {}) {
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
-      ...(options.headers || {}),
+      ...options.headers,
     },
   });
 }
