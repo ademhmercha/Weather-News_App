@@ -1,61 +1,60 @@
-import { createClient } from '@supabase/supabase-js';
-
-function getSupabaseClient(token) {
-  return createClient(
-    process.env.VITE_SUPABASE_URL,
-    process.env.VITE_SUPABASE_ANON_KEY,
-    {
-      global: {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-      auth: { persistSession: false },
-    }
-  );
-}
-
 export default async function handler(req, res) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Missing or invalid Authorization header' });
+    return res.status(401).json({ error: 'Missing Authorization header' });
   }
 
   const token = authHeader.slice(7);
-  const supabase = getSupabaseClient(token);
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
 
-  if (req.method === 'GET') {
-    const { data, error } = await supabase
-      .from('saved_places')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) return res.status(500).json({ error: error.message });
-    return res.json(data);
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(500).json({ error: 'Supabase env vars not configured' });
   }
 
-  if (req.method === 'POST') {
-    const { city_name, lat, lon } = req.body || {};
-    if (!city_name || lat == null || lon == null) {
-      return res.status(400).json({ error: 'city_name, lat, and lon are required' });
+  const base = `${supabaseUrl}/rest/v1/saved_places`;
+  const headers = {
+    'Content-Type': 'application/json',
+    apikey: supabaseKey,
+    Authorization: `Bearer ${token}`,
+  };
+
+  try {
+    if (req.method === 'GET') {
+      const r = await fetch(`${base}?order=created_at.desc`, { headers });
+      const data = await r.json();
+      if (!r.ok) return res.status(r.status).json({ error: data.message || 'DB error' });
+      return res.json(data);
     }
 
-    const { data, error } = await supabase
-      .from('saved_places')
-      .insert({ city_name, lat, lon })
-      .select()
-      .single();
+    if (req.method === 'POST') {
+      const { city_name, lat, lon } = req.body || {};
+      if (!city_name || lat == null || lon == null) {
+        return res.status(400).json({ error: 'city_name, lat, lon required' });
+      }
+      const r = await fetch(base, {
+        method: 'POST',
+        headers: { ...headers, Prefer: 'return=representation' },
+        body: JSON.stringify({ city_name, lat, lon }),
+      });
+      const data = await r.json();
+      if (!r.ok) return res.status(r.status).json({ error: data.message || 'DB error' });
+      return res.status(201).json(Array.isArray(data) ? data[0] : data);
+    }
 
-    if (error) return res.status(500).json({ error: error.message });
-    return res.status(201).json(data);
+    if (req.method === 'DELETE') {
+      const { id } = req.query;
+      if (!id) return res.status(400).json({ error: 'id required' });
+      const r = await fetch(`${base}?id=eq.${id}`, { method: 'DELETE', headers });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        return res.status(r.status).json({ error: data.message || 'DB error' });
+      }
+      return res.json({ success: true });
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
-
-  if (req.method === 'DELETE') {
-    const { id } = req.query;
-    if (!id) return res.status(400).json({ error: 'id is required' });
-
-    const { error } = await supabase.from('saved_places').delete().eq('id', id);
-    if (error) return res.status(500).json({ error: error.message });
-    return res.json({ success: true });
-  }
-
-  return res.status(405).json({ error: 'Method not allowed' });
 }
