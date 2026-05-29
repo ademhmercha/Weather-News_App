@@ -1,4 +1,5 @@
 import WeatherIcon from './WeatherIcon';
+import { getWeatherLabel } from '../lib/weatherIcons';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -7,36 +8,44 @@ export default function ForecastCard({ weather }) {
   const { daily } = weather;
 
   return (
-    <div className="rounded-2xl border border-white/[0.07] bg-slate-900/50 backdrop-blur-sm overflow-hidden animate-fade-in">
-      <div className="px-5 py-3 border-b border-white/[0.05]">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">5-Day Forecast</p>
-      </div>
-      <div className="grid grid-cols-5 divide-x divide-white/[0.04]">
-        {daily.time.slice(0, 5).map((date, i) => {
-          const d = new Date(date);
-          const isToday = i === 0;
-          const max = Math.round(daily.temperature_2m_max[i]);
-          const min = Math.round(daily.temperature_2m_min[i]);
-          const range = (daily.temperature_2m_max[0] - daily.temperature_2m_min[0]) || 1;
-          const barH = Math.max(20, ((max - min) / range) * 60);
+    <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(0,0,0,0.22)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <p className="text-white/40 text-[10px] font-semibold uppercase tracking-widest px-4 pt-4 pb-2">Daily</p>
+      <div className="overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+        <div className="flex px-2 pb-4 gap-1 min-w-max">
+          {daily.time.slice(0, 7).map((date, i) => {
+            const d = new Date(date);
+            const isToday = i === 0;
+            const max = Math.round(daily.temperature_2m_max[i]);
+            const min = Math.round(daily.temperature_2m_min[i]);
 
-          return (
-            <div key={date} className={`flex flex-col items-center py-5 px-2 gap-3 transition-colors ${isToday ? 'bg-blue-950/30' : 'hover:bg-slate-800/30'}`}>
-              <span className={`text-xs font-medium tracking-wide ${isToday ? 'text-blue-400' : 'text-slate-500'}`}>
-                {isToday ? 'Today' : DAYS[d.getDay()]}
-              </span>
-              <WeatherIcon code={daily.weathercode[i]} size={32} />
-              <div className="flex flex-col items-center gap-0.5">
-                <span className="text-slate-100 text-sm font-semibold">{max}°</span>
-                <div className="w-px bg-slate-700/60 my-0.5" style={{ height: Math.max(8, barH * 0.4) }} />
-                <span className="text-slate-500 text-xs">{min}°</span>
+            return (
+              <div
+                key={date}
+                className={`flex flex-col items-center gap-2 px-4 py-3 rounded-xl min-w-[80px] transition-all cursor-default ${
+                  isToday ? 'bg-white/15' : 'hover:bg-white/10'
+                }`}
+              >
+                <span className={`text-xs font-semibold ${isToday ? 'text-white' : 'text-white/50'}`}>
+                  {isToday ? 'Today' : DAYS[d.getDay()]}
+                </span>
+                <span className={`text-xs text-white/40 ${isToday ? 'text-white/60' : ''}`}>
+                  {d.getDate()}
+                </span>
+                <WeatherIcon code={daily.weathercode[i]} size={36} />
+                <div className="flex items-center gap-2">
+                  <span className="text-white text-sm font-semibold">{max}°</span>
+                  <span className="text-white/35 text-xs">{min}°</span>
+                </div>
+                {daily.precipitation_sum[i] > 0.2 && (
+                  <span className="text-blue-400 text-[10px]">{daily.precipitation_sum[i].toFixed(1)}mm</span>
+                )}
+                <span className="text-white/25 text-[9px] text-center leading-tight hidden sm:block">
+                  {getWeatherLabel(daily.weathercode[i])}
+                </span>
               </div>
-              {daily.precipitation_sum[i] > 0 && (
-                <span className="text-blue-400 text-xs">{daily.precipitation_sum[i].toFixed(1)}mm</span>
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

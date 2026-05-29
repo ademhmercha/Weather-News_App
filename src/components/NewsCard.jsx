@@ -12,34 +12,32 @@ export default function NewsCard({ article }) {
       href={article.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex gap-4 p-4 rounded-xl border border-white/[0.05] hover:border-white/[0.10] hover:bg-slate-800/40 transition-all duration-200 animate-fade-in"
+      className="group flex gap-3 p-3.5 rounded-xl transition-all duration-200 animate-fade-in"
+      style={{ background: 'rgba(0,0,0,0.28)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.07)' }}
     >
       {article.urlToImage && (
         <img
           src={article.urlToImage}
           alt=""
-          className="w-20 h-16 object-cover rounded-lg flex-shrink-0 bg-slate-800"
+          className="w-20 h-16 object-cover rounded-lg flex-shrink-0 bg-white/10"
           onError={e => { e.currentTarget.style.display = 'none'; }}
         />
       )}
       <div className="flex-1 min-w-0">
-        <p className="text-slate-200 text-sm font-medium leading-snug line-clamp-2 group-hover:text-white transition-colors">
+        <p className="text-white/90 text-sm font-medium leading-snug line-clamp-2 group-hover:text-white transition-colors">
           {article.title}
         </p>
-        <div className="flex items-center gap-2 mt-2">
+        <div className="flex items-center gap-2 mt-1.5">
           {article.source?.name && (
-            <span className="text-xs text-blue-400 font-medium">{article.source.name}</span>
+            <span className="text-blue-400 text-xs font-medium">{article.source.name}</span>
           )}
-          {pub && <span className="text-xs text-slate-600">{pub}</span>}
+          {pub && <span className="text-white/30 text-xs">{pub}</span>}
         </div>
         {article.description && (
-          <p className="text-slate-500 text-xs mt-1 line-clamp-1 leading-relaxed">{article.description}</p>
+          <p className="text-white/35 text-xs mt-1 line-clamp-1">{article.description}</p>
         )}
       </div>
-      <ArrowUpRight
-        size={16}
-        className="text-slate-700 group-hover:text-slate-400 flex-shrink-0 self-start mt-0.5 transition-colors"
-      />
+      <ArrowUpRight size={14} className="text-white/25 group-hover:text-white/60 flex-shrink-0 self-start mt-0.5 transition-colors" />
     </a>
   );
 }
