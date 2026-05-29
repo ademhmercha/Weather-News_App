@@ -13,8 +13,10 @@ export async function fetchWeather(lat, lon) {
   return apiFetch(`/api/weather?lat=${lat}&lon=${lon}`);
 }
 
-export async function fetchNews(city) {
-  return apiFetch(`/api/news?city=${encodeURIComponent(city)}`);
+export async function fetchNews(city, country = '') {
+  const params = new URLSearchParams({ city });
+  if (country) params.set('country', country);
+  return apiFetch(`/api/news?${params.toString()}`);
 }
 
 export async function geocodeSearch(query) {

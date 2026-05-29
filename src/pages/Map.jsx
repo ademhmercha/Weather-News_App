@@ -47,8 +47,10 @@ export default function MapPage() {
         headers: { 'User-Agent': 'WeatherNewsApp/1.0' },
       });
       const d = await r.json();
-      return d.address?.city || d.address?.town || d.address?.village || d.address?.county || d.display_name?.split(',')[0] || `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
-    } catch { return `${lat.toFixed(2)}, ${lon.toFixed(2)}`; }
+      const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || d.display_name?.split(',')[0] || `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+      const country = d.address?.country || null;
+      return { city, country };
+    } catch { return { city: `${lat.toFixed(2)}, ${lon.toFixed(2)}`, country: null }; }
   }
 
   async function loadPin(lat, lon) {
@@ -58,9 +60,12 @@ export default function MapPage() {
     setPanelLoading(true);
     setPanel(null);
     try {
-      const city = await reverseGeocode(lat, lon);
-      const [wx, news] = await Promise.all([fetchWeather(lat, lon), fetchNews(city).catch(() => ({ articles: [] }))]);
-      setPanel({ city, lat, lon, weather: wx, news: news.articles || [] });
+      const { city, country } = await reverseGeocode(lat, lon);
+      const [wx, news] = await Promise.all([
+        fetchWeather(lat, lon),
+        fetchNews(city, country).catch(() => ({ articles: [], label: '' })),
+      ]);
+      setPanel({ city, country, lat, lon, weather: wx, news: news.articles || [], newsLabel: news.label || city });
     } catch (e) { setPanel({ error: e.message }); }
     finally { setPanelLoading(false); }
   }
@@ -128,7 +133,7 @@ export default function MapPage() {
 }
 
 function Panel({ data, onSave, onClose }) {
-  const { weather, city, news, lat, lon } = data;
+  const { weather, city, news, newsLabel, lat, lon } = data;
   const cw = weather?.current_weather;
 
   return (
@@ -173,14 +178,15 @@ function Panel({ data, onSave, onClose }) {
 
       {/* News */}
       <div className="flex-1 p-5">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-widest mb-3">Top News</p>
-        {news.length > 0 ? (
-          <div className="space-y-1.5">
-            {news.slice(0, 3).map((a, i) => <NewsCard key={i} article={a} />)}
-          </div>
-        ) : (
-          <p className="text-slate-600 text-sm text-center py-6">No news for this location.</p>
-        )}
+        <div className="flex items-center gap-2 mb-3">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">News</p>
+          {newsLabel && newsLabel !== city && (
+            <span className="text-xs text-slate-600 normal-case">— {newsLabel}</span>
+          )}
+        </div>
+        <div className="space-y-1.5">
+          {news.slice(0, 3).map((a, i) => <NewsCard key={i} article={a} />)}
+        </div>
       </div>
     </div>
   );
