@@ -5,9 +5,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'lat and lon are required' });
   }
 
+  // Normalize lon to [-180, 180] — Leaflet can produce values like 336° when panning
+  const clampedLat = Math.max(-90, Math.min(90, parseFloat(lat)));
+  const clampedLon = ((parseFloat(lon) % 360) + 540) % 360 - 180;
+
   const url = new URL('https://api.open-meteo.com/v1/forecast');
-  url.searchParams.set('latitude', lat);
-  url.searchParams.set('longitude', lon);
+  url.searchParams.set('latitude', clampedLat);
+  url.searchParams.set('longitude', clampedLon);
   url.searchParams.set('current_weather', 'true');
   url.searchParams.set('hourly', 'relative_humidity_2m,apparent_temperature,precipitation_probability,windspeed_10m');
   url.searchParams.set('daily', 'weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max');
