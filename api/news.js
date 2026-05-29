@@ -48,7 +48,7 @@ async function fetchRSS({ name, url }) {
     const items = doc?.rss?.channel?.item ?? doc?.feed?.entry ?? [];
     const arr = Array.isArray(items) ? items : [items];
 
-    return arr.slice(0, 6).map(item => {
+    return arr.slice(0, 20).map(item => {
       const link = typeof item.link === 'string'
         ? item.link
         : item.link?.['@_href'] ?? item.guid ?? '';
@@ -90,10 +90,10 @@ export default async function handler(req, res) {
     );
     if (cityArticles.length >= 2) {
       res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=300');
-      return res.json({ articles: cityArticles.slice(0, 8), label: city });
+      return res.json({ articles: cityArticles.slice(0, 30), label: city });
     }
   }
 
   res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=300');
-  return res.json({ articles: articles.slice(0, 8), label: 'Tunisia' });
+  return res.json({ articles: articles.slice(0, 40), label: 'Tunisia' });
 }
