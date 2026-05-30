@@ -18,6 +18,7 @@ const CSS = `
 export default function SplashScreen({ status = 'Starting…', visible }) {
   const [opacity, setOpacity] = useState(1);
   const [mounted, setMounted] = useState(true);
+  const [logoFailed, setLogoFailed] = useState(false);
 
   useEffect(() => {
     if (!visible) {
@@ -55,13 +56,30 @@ export default function SplashScreen({ status = 'Starting…', visible }) {
 
       {/* Logo */}
       <div style={{ animation: 'splashFadeIn .7s cubic-bezier(.34,1.56,.64,1) forwards' }}>
-        <img
-          src="/logo.png"
-          alt="WeatherNews"
-          className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl shadow-2xl"
-          style={{ boxShadow: '0 24px 60px rgba(37,99,235,.35), 0 8px 24px rgba(0,0,0,.6)' }}
-          onError={e => { e.currentTarget.style.display = 'none'; }}
-        />
+        {logoFailed ? (
+          /* Fallback mark when logo.png is missing */
+          <div
+            className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl flex items-center justify-center"
+            style={{
+              background: 'linear-gradient(135deg,#1d4ed8 0%,#2563eb 50%,#3b82f6 100%)',
+              boxShadow: '0 24px 60px rgba(37,99,235,.4), 0 8px 24px rgba(0,0,0,.6)',
+            }}
+          >
+            <svg width="56" height="56" viewBox="0 0 48 48" fill="none">
+              <circle cx="24" cy="20" r="9" fill="#fcd34d" />
+              <path d="M38 36H18a10 10 0 1 1 2-19.6A12 12 0 0 1 40 28a8 8 0 0 1-2 18Z"
+                fill="white" fillOpacity=".9" />
+            </svg>
+          </div>
+        ) : (
+          <img
+            src="/logo.png"
+            alt="WeatherNews"
+            className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl shadow-2xl"
+            style={{ boxShadow: '0 24px 60px rgba(37,99,235,.35), 0 8px 24px rgba(0,0,0,.6)' }}
+            onError={() => setLogoFailed(true)}
+          />
+        )}
       </div>
 
       {/* App name */}
