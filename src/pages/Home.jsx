@@ -1,42 +1,95 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Bookmark, BookmarkCheck, CloudSun, Newspaper, Search, X } from 'lucide-react';
-import { fetchWeather, fetchNews, detectLocation, savePlace } from '../lib/api';
+import { fetchWeather, fetchNews, fetchAQI, detectLocation, savePlace } from '../lib/api';
 import { getWeatherLabel, getSkyStyle, getAtmosphereOverlay } from '../lib/weatherIcons';
 import WeatherIcon from '../components/WeatherIcon';
+import WeatherBackground from '../components/WeatherBackground';
 import ForecastCard from '../components/ForecastCard';
 import HourlyForecast from '../components/HourlyForecast';
 import MetricsGrid from '../components/MetricsGrid';
+import ComfortScore, { computeComfortScore } from '../components/ComfortScore';
 import SavedPlaces from '../components/SavedPlaces';
 import NewsCard from '../components/NewsCard';
 import SearchBar from '../components/SearchBar';
 import LoadingSpinner from '../components/LoadingSpinner';
 
-const TABS = [
-  { id: 'weather', label: 'Weather', Icon: CloudSun },
-  { id: 'news',    label: 'News',    Icon: Newspaper },
-];
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function generateSummary(weather, aqi) {
+  if (!weather) return '';
+  const cw = weather.current_weather;
+  const hourly = weather.hourly;
+  const daily = weather.daily;
+  const temp = Math.round(cw.temperature);
+  const feelsLike = Math.round(hourly?.apparent_temperature?.[0] ?? temp);
+  const uv = daily?.uv_index_max?.[0] ?? 0;
+  const rain = hourly?.precipitation_probability?.[0] ?? 0;
+  const wind = Math.round(cw.windspeed);
+  const label = getWeatherLabel(cw.weathercode);
+
+  const parts = [];
+  if (uv >= 8) parts.push('very high UV — apply sunscreen');
+  else if (uv >= 6) parts.push('high UV levels today');
+  if (rain >= 70) parts.push('rain very likely — bring an umbrella');
+  else if (rain >= 40) parts.push('possible showers later');
+  if (Math.abs(feelsLike - temp) >= 4)
+    parts.push(`feels ${feelsLike < temp ? `${temp - feelsLike}° cooler` : `${feelsLike - temp}° warmer`} than actual`);
+  if (wind >= 50) parts.push('strong winds expected');
+  if (aqi && aqi >= 100) parts.push('poor air quality — limit outdoor exposure');
+
+  const base = parts.length ? parts.join(', ') : label;
+  return base.charAt(0).toUpperCase() + base.slice(1) + '.';
+}
+
+function aqiColor(v) {
+  if (v <= 50)  return '#10b981';
+  if (v <= 100) return '#f59e0b';
+  if (v <= 150) return '#f97316';
+  if (v <= 200) return '#ef4444';
+  return '#8b5cf6';
+}
+function aqiLabel(v) {
+  if (v <= 50)  return 'Good';
+  if (v <= 100) return 'Moderate';
+  if (v <= 150) return 'Unhealthy (SG)';
+  if (v <= 200) return 'Unhealthy';
+  if (v <= 300) return 'Very Unhealthy';
+  return 'Hazardous';
+}
+
+// ── Component ──────────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const [location, setLocation]         = useState(null);
-  const [weather, setWeather]           = useState(null);
-  const [news, setNews]                 = useState([]);
-  const [loading, setLoading]           = useState(true);
-  const [newsLoading, setNewsLoading]   = useState(false);
-  const [error, setError]               = useState(null);
-  const [saving, setSaving]             = useState(false);
-  const [saved, setSaved]               = useState(false);
-  const [tab, setTab]                   = useState('weather');
-  const [showSearch, setShowSearch]     = useState(false);
-  const [showPlaces, setShowPlaces]     = useState(false);
-  const [refreshKey, setRefreshKey]     = useState(0);
+  const [location, setLocation]       = useState(null);
+  const [weather, setWeather]         = useState(null);
+  const [aqiData, setAqiData]         = useState(null);
+  const [news, setNews]               = useState([]);
+  const [cityImage, setCityImage]     = useState(null);
+  const [loading, setLoading]         = useState(true);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [error, setError]             = useState(null);
+  const [saving, setSaving]           = useState(false);
+  const [saved, setSaved]             = useState(false);
+  const [tab, setTab]                 = useState('weather');
+  const [showSearch, setShowSearch]   = useState(false);
+  const [showPlaces, setShowPlaces]   = useState(false);
+  const [refreshKey, setRefreshKey]   = useState(0);
 
   const loadData = useCallback(async (loc) => {
     setLoading(true); setNewsLoading(true); setError(null); setSaved(false);
-    try { setWeather(await fetchWeather(loc.lat, loc.lon)); }
-    catch (e) { setError(e.message); }
+    try {
+      const [wx, aq] = await Promise.all([
+        fetchWeather(loc.lat, loc.lon),
+        fetchAQI(loc.lat, loc.lon).catch(() => null),
+      ]);
+      setWeather(wx);
+      setAqiData(aq);
+    } catch (e) { setError(e.message); }
     finally { setLoading(false); }
-    try { const n = await fetchNews(loc.city, loc.country ?? ''); setNews(n.articles || []); }
-    catch { setNews([]); }
+    try {
+      const n = await fetchNews(loc.city, loc.country ?? '');
+      setNews(n.articles || []);
+    } catch { setNews([]); }
     finally { setNewsLoading(false); }
   }, []);
 
@@ -48,6 +101,16 @@ export default function Home() {
         setLocation(loc); loadData(loc);
       });
   }, [loadData]);
+
+  // Fetch Wikipedia city photo
+  useEffect(() => {
+    if (!location?.city) return;
+    setCityImage(null);
+    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(location.city)}`)
+      .then(r => r.json())
+      .then(d => setCityImage(d.thumbnail?.source ?? null))
+      .catch(() => {});
+  }, [location?.city]);
 
   function go(city, lat, lon, country = '') {
     const loc = { city, lat, lon, country };
@@ -62,71 +125,82 @@ export default function Home() {
     finally { setSaving(false); }
   }
 
-  const cw   = weather?.current_weather;
-  const code = cw?.weathercode ?? 0;
-  const isDay = (cw?.is_day ?? 1) === 1;
-  const sky  = getSkyStyle(code, isDay);
-  const atm  = getAtmosphereOverlay(code, isDay);
-  const temp = cw ? Math.round(cw.temperature) : null;
+  // Derived weather values
+  const cw     = weather?.current_weather;
+  const code   = cw?.weathercode ?? 0;
+  const isDay  = (cw?.is_day ?? 1) === 1;
+  const temp   = cw ? Math.round(cw.temperature) : null;
+  const hourly = weather?.hourly;
+  const daily  = weather?.daily;
+  const ci     = Math.max(0, (hourly?.time ?? []).findIndex(t => new Date(t) >= new Date()));
+  const feelsLike  = hourly?.apparent_temperature?.[ci];
+  const humidity   = hourly?.relative_humidity_2m?.[ci];
+  const rain       = hourly?.precipitation_probability?.[ci];
+  const uv         = daily?.uv_index_max?.[0];
+  const wind       = cw?.windspeed;
+  const aqi        = aqiData?.aqi;
 
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-  const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const comfort = weather ? computeComfortScore({ temp, feelsLike, humidity, uv, rain, wind }) : null;
+  const summary = generateSummary(weather, aqi);
+  const sky     = getSkyStyle(code, isDay);
 
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden" style={{ background: sky.bg }}>
-      {/* Atmospheric glow overlay */}
-      {atm !== 'none' && (
-        <div className="absolute inset-0 pointer-events-none" style={{ background: atm }} />
-      )}
-      {/* Vignette bottom */}
+      {/* Animated background layer */}
+      <WeatherBackground code={code} isDay={isDay} />
+
+      {/* Atmospheric overlay */}
+      <div className="absolute inset-0 pointer-events-none"
+        style={{ background: getAtmosphereOverlay(code, isDay) }} />
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
+      {/* ── City image banner ── */}
+      {cityImage && (
+        <div className="absolute inset-x-0 top-0 h-44 overflow-hidden pointer-events-none">
+          <img src={cityImage} alt="" className="w-full h-full object-cover opacity-20" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-transparent"/>
+        </div>
+      )}
+
       {/* ── Top bar ── */}
-      <div className="relative z-20 flex items-center justify-between px-6 pt-5 pb-3">
+      <div className="relative z-20 flex items-center justify-between px-5 pt-5 pb-3">
         <div>
-          <h1 className="text-white text-xl font-semibold leading-tight drop-shadow">{location?.city ?? '—'}</h1>
-          <p className="text-white/50 text-xs mt-0.5">{dateStr}</p>
+          <h1 className="text-white text-xl font-semibold drop-shadow">{location?.city ?? '—'}</h1>
+          <p className="text-white/45 text-xs">{location?.country}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => { setShowSearch(s => !s); setShowPlaces(false); }}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all"
-          >
-            <Search size={16} />
+          <button onClick={() => { setShowSearch(s => !s); setShowPlaces(false); }}
+            className="p-2 rounded-xl bg-black/20 backdrop-blur hover:bg-black/35 text-white/70 hover:text-white transition-all">
+            <Search size={15} />
           </button>
-          <button
-            onClick={() => { setShowPlaces(s => !s); setShowSearch(false); }}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all text-xs font-medium px-3"
-          >
+          <button onClick={() => { setShowPlaces(s => !s); setShowSearch(false); }}
+            className="px-3 py-2 rounded-xl bg-black/20 backdrop-blur hover:bg-black/35 text-white/60 hover:text-white text-xs font-medium transition-all">
             Saved
           </button>
-          <button
-            onClick={handleSave}
-            disabled={saving || saved}
-            className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl border transition-all disabled:opacity-50 ${
-              saved ? 'bg-blue-500/30 border-blue-400/40 text-blue-300' : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
-            }`}
-          >
+          <button onClick={handleSave} disabled={saving || saved}
+            className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl border transition-all disabled:opacity-50 backdrop-blur ${
+              saved ? 'bg-blue-500/25 border-blue-400/35 text-blue-300' : 'bg-black/20 border-white/15 text-white/60 hover:text-white hover:bg-black/35'
+            }`}>
             {saved ? <BookmarkCheck size={13} /> : <Bookmark size={13} />}
             {saved ? 'Saved' : saving ? '…' : 'Save'}
           </button>
         </div>
       </div>
 
-      {/* Dropdown: Search */}
+      {/* Search dropdown */}
       {showSearch && (
-        <div className="relative z-20 px-6 pb-3 animate-fade-in">
+        <div className="relative z-20 px-5 pb-3 animate-fade-in">
           <SearchBar onSelect={r => go(r.city, r.lat, r.lon)} placeholder="Search Tunisian city..." />
         </div>
       )}
 
-      {/* Dropdown: Saved places */}
+      {/* Saved places dropdown */}
       {showPlaces && (
-        <div className="relative z-20 mx-6 mb-3 bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-4 animate-fade-in">
+        <div className="relative z-20 mx-5 mb-3 rounded-2xl p-4 animate-fade-in"
+          style={{ background:'rgba(0,0,0,0.45)', backdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.10)' }}>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-white/60 text-xs font-semibold uppercase tracking-widest">Saved Locations</p>
-            <button onClick={() => setShowPlaces(false)} className="text-white/40 hover:text-white/80">
+            <p className="text-white/50 text-[10px] font-semibold uppercase tracking-widest">Saved locations</p>
+            <button onClick={() => setShowPlaces(false)} className="text-white/35 hover:text-white/70 transition-colors">
               <X size={14} />
             </button>
           </div>
@@ -134,73 +208,93 @@ export default function Home() {
         </div>
       )}
 
-      {/* ── Tab bar ── */}
-      <div className="relative z-20 flex items-center gap-1 px-6 mb-2">
-        {TABS.map(({ id, label, Icon }) => (
+      {/* ── Tab pills ── */}
+      <div className="relative z-20 flex gap-3 px-5 mb-3">
+        {[
+          { id: 'weather', label: 'Weather', Icon: CloudSun },
+          { id: 'news',    label: 'News',    Icon: Newspaper },
+        ].map(({ id, label, Icon }) => (
           <button key={id} onClick={() => setTab(id)}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-medium transition-all ${
-              tab === id ? 'bg-white/20 text-white backdrop-blur' : 'text-white/45 hover:text-white/75'
-            }`}
-          >
-            <Icon size={14} strokeWidth={tab === id ? 2 : 1.5} />
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 ${
+              tab === id
+                ? 'bg-white/20 text-white backdrop-blur shadow-lg'
+                : 'bg-black/15 text-white/40 hover:bg-black/25 hover:text-white/70 backdrop-blur'
+            }`}>
+            <Icon size={17} strokeWidth={tab === id ? 2 : 1.5} />
             {label}
           </button>
         ))}
       </div>
 
-      {/* ── Weather Tab ── */}
+      {/* ── WEATHER TAB ── */}
       {tab === 'weather' && (
         <div className="relative z-10 flex-1 flex flex-col">
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
-              <LoadingSpinner size="lg" label="Loading weather..." />
+              <LoadingSpinner size="lg" label="Detecting location…" />
             </div>
           ) : error ? (
-            <div className="mx-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm">{error}</div>
+            <div className="mx-5 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm">{error}</div>
           ) : (
-            <>
-              {/* Hero */}
-              <div className="flex flex-col items-center justify-center pt-4 pb-6 px-6 text-center">
-                <WeatherIcon code={code} size={130} className="drop-shadow-2xl mb-2" />
-                <div className="flex items-start">
-                  <span className="text-white font-thin leading-none drop-shadow-lg"
-                    style={{ fontSize: 'clamp(80px, 14vw, 130px)' }}>
-                    {temp}
-                  </span>
-                  <span className="text-white/60 text-4xl font-light mt-6 ml-2">°C</span>
+            <div className="px-5 space-y-3 animate-fade-in pb-6">
+
+              {/* ── Hero: icon + temp + condition + summary (compact) ── */}
+              <div className="flex items-center gap-5 py-3">
+                <WeatherIcon code={code} size={90} className="flex-shrink-0 drop-shadow-2xl" />
+                <div>
+                  <div className="flex items-start leading-none">
+                    <span className="text-white font-thin" style={{ fontSize:'clamp(72px,12vw,108px)', lineHeight:'1' }}>
+                      {temp}
+                    </span>
+                    <span className="text-white/50 text-2xl font-light mt-3 ml-1">°C</span>
+                  </div>
+                  <p className="text-white/90 text-lg font-light mt-1">{getWeatherLabel(code)}</p>
+                  {summary && (
+                    <p className="text-white/45 text-xs mt-1.5 leading-relaxed max-w-[240px]">{summary}</p>
+                  )}
                 </div>
-                <p className="text-white text-xl font-light mt-1 drop-shadow">{getWeatherLabel(code)}</p>
-                <p className="text-white/45 text-xs mt-1">Updated {timeStr}</p>
               </div>
 
-              {/* Inline stats */}
+              {/* AQI badge (if available) */}
+              {aqi != null && (
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl w-fit"
+                  style={{ background:'rgba(0,0,0,0.25)', border:`1px solid ${aqiColor(aqi)}40`, backdropFilter:'blur(12px)' }}>
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: aqiColor(aqi) }} />
+                  <span className="text-white/60 text-xs">AQI</span>
+                  <span className="text-white text-sm font-semibold">{Math.round(aqi)}</span>
+                  <span className="text-xs font-medium" style={{ color: aqiColor(aqi) }}>{aqiLabel(aqi)}</span>
+                </div>
+              )}
+
+              {/* Inline metrics */}
               <MetricsGrid weather={weather} inline />
 
+              {/* Comfort Score */}
+              {comfort != null && <ComfortScore score={comfort} />}
+
               {/* Hourly */}
-              <div className="px-4 mt-4">
-                <HourlyForecast weather={weather} />
-              </div>
+              <HourlyForecast weather={weather} />
 
               {/* Daily */}
-              <div className="px-4 mt-3 pb-6">
-                <ForecastCard weather={weather} />
-              </div>
-            </>
+              <ForecastCard weather={weather} />
+            </div>
           )}
         </div>
       )}
 
-      {/* ── News Tab ── */}
+      {/* ── NEWS TAB ── */}
       {tab === 'news' && (
-        <div className="relative z-10 flex-1 px-6 pb-6 overflow-auto animate-fade-in">
-          <p className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-4 mt-2">
-            Latest news — {location?.city}
+        <div className="relative z-10 flex-1 px-5 pb-6 animate-fade-in">
+          <p className="text-white/40 text-[10px] font-semibold uppercase tracking-widest mb-4 mt-1">
+            Latest — {location?.city}
           </p>
           {newsLoading ? (
-            <LoadingSpinner size="sm" label="Loading news..." />
+            <LoadingSpinner size="sm" label="Loading news…" />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {news.map((a, i) => <NewsCard key={i} article={a} />)}
+            <div className="space-y-2">
+              {news.map((a, i) => (
+                <NewsCard key={i} article={a} featured={i === 0 && !!a.urlToImage} />
+              ))}
             </div>
           )}
         </div>

@@ -13,6 +13,10 @@ export async function fetchWeather(lat, lon) {
   return apiFetch(`/api/weather?lat=${lat}&lon=${lon}`);
 }
 
+export async function fetchAQI(lat, lon) {
+  return apiFetch(`/api/aqi?lat=${lat}&lon=${lon}`);
+}
+
 export async function fetchNews(city, country = '') {
   const params = new URLSearchParams({ city });
   if (country) params.set('country', country);
