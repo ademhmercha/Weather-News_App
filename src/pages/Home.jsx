@@ -113,9 +113,24 @@ export default function Home() {
   useEffect(() => {
     if (!location?.city) return;
     setCityImage(null);
-    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(location.city)}`)
-      .then(r => r.json())
-      .then(d => setCityImage(d.thumbnail?.source ?? null))
+
+    // Strip venue qualifiers (airport, hospital…) so we search for the city, not the building
+    const searchTerm = location.city
+      .replace(/\s*[-–]\s*.*?(Airport|Aéroport|Hospital|University|Port|Station|Railway)/i, '')
+      .trim() || location.city;
+
+    const tryFetch = async (term) => {
+      const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(term)}`);
+      const d = await r.json();
+      return d.thumbnail?.source ?? null;
+    };
+
+    tryFetch(searchTerm)
+      .then(src => {
+        if (src) { setCityImage(src); return; }
+        // If cleaned term has no image, try the raw city name as fallback
+        if (searchTerm !== location.city) return tryFetch(location.city).then(setCityImage);
+      })
       .catch(() => {});
   }, [location?.city]);
 
@@ -169,8 +184,8 @@ export default function Home() {
       {cityImage && (
         <div className="absolute inset-x-0 top-0 h-52 overflow-hidden pointer-events-none">
           <img src={cityImage} alt="" className="w-full h-full object-cover"
-            style={{ opacity: 0.35 }} />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/90" />
+            style={{ opacity: 0.5 }} />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/20 to-black/85" />
         </div>
       )}
 
