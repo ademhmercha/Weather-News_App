@@ -16,29 +16,28 @@ import SplashScreen from '../components/SplashScreen';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function generateSummary(weather, aqi) {
-  if (!weather) return '';
-  const cw = weather.current_weather;
-  const hourly = weather.hourly;
-  const daily = weather.daily;
-  const temp = Math.round(cw.temperature);
-  const feelsLike = Math.round(hourly?.apparent_temperature?.[0] ?? temp);
-  const uv = daily?.uv_index_max?.[0] ?? 0;
-  const rain = hourly?.precipitation_probability?.[0] ?? 0;
-  const wind = Math.round(cw.windspeed);
-  const label = getWeatherLabel(cw.weathercode);
-
+// Takes already-derived values (current hour) instead of recalculating from hourly[0]
+function generateSummary({ code, temp, feelsLike, uv, rain, wind, aqi }) {
+  if (temp == null) return '';
   const parts = [];
-  if (uv >= 8) parts.push('very high UV — apply sunscreen');
-  else if (uv >= 6) parts.push('high UV levels today');
-  if (rain >= 70) parts.push('rain very likely — bring an umbrella');
-  else if (rain >= 40) parts.push('possible showers later');
-  if (Math.abs(feelsLike - temp) >= 4)
-    parts.push(`feels ${feelsLike < temp ? `${temp - feelsLike}° cooler` : `${feelsLike - temp}° warmer`} than actual`);
-  if (wind >= 50) parts.push('strong winds expected');
+
+  if ((uv ?? 0) >= 8) parts.push('very high UV — apply sunscreen');
+  else if ((uv ?? 0) >= 6) parts.push('high UV levels today');
+
+  if ((rain ?? 0) >= 70) parts.push('rain very likely — bring an umbrella');
+  else if ((rain ?? 0) >= 40) parts.push('possible showers later');
+
+  if (feelsLike != null && Math.abs(Math.round(feelsLike) - temp) >= 3)
+    parts.push(
+      `feels ${Math.round(feelsLike) < temp
+        ? `${temp - Math.round(feelsLike)}° cooler`
+        : `${Math.round(feelsLike) - temp}° warmer`} than actual`
+    );
+
+  if ((wind ?? 0) >= 50) parts.push('strong winds expected');
   if (aqi && aqi >= 100) parts.push('poor air quality — limit outdoor exposure');
 
-  const base = parts.length ? parts.join(', ') : label;
+  const base = parts.length ? parts.join(', ') : getWeatherLabel(code);
   return base.charAt(0).toUpperCase() + base.slice(1) + '.';
 }
 
@@ -149,7 +148,8 @@ export default function Home() {
   const aqi        = aqiData?.aqi;
 
   const comfort = weather ? computeComfortScore({ temp, feelsLike, humidity, uv, rain, wind }) : null;
-  const summary = generateSummary(weather, aqi);
+  // Use current-hour values (not hourly[0]) so summary is always accurate
+  const summary = generateSummary({ code, temp, feelsLike, uv, rain, wind, aqi });
   const sky     = getSkyStyle(code, isDay);
 
   return (
@@ -165,11 +165,12 @@ export default function Home() {
         style={{ background: getAtmosphereOverlay(code, isDay) }} />
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
-      {/* ── City image banner ── */}
+      {/* ── City image — subtle top accent only ── */}
       {cityImage && (
-        <div className="absolute inset-x-0 top-0 h-44 overflow-hidden pointer-events-none">
-          <img src={cityImage} alt="" className="w-full h-full object-cover opacity-20" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-transparent"/>
+        <div className="absolute inset-x-0 top-0 h-32 overflow-hidden pointer-events-none">
+          <img src={cityImage} alt="" className="w-full h-full object-cover"
+            style={{ opacity: 0.1, filter: 'blur(2px) saturate(0.6)' }} />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/80" />
         </div>
       )}
 
