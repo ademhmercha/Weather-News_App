@@ -1,4 +1,4 @@
-import { getAccessToken } from './supabase';
+// ── API helpers ────────────────────────────────────────────────────────────────
 
 async function apiFetch(path, options = {}) {
   const res = await fetch(path, options);
@@ -23,6 +23,8 @@ export async function geocodeSearch(query) {
   return apiFetch(`/api/geocode?q=${encodeURIComponent(query)}`);
 }
 
+// ── Location detection ─────────────────────────────────────────────────────────
+
 async function reverseGeocodeCity(lat, lon) {
   try {
     const r = await fetch(
@@ -30,7 +32,7 @@ async function reverseGeocodeCity(lat, lon) {
       { headers: { 'User-Agent': 'WeatherNewsApp/1.0' } }
     );
     const d = await r.json();
-    const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || d.display_name?.split(',')[0];
+    const city    = d.address?.city || d.address?.town || d.address?.village || d.address?.county || d.display_name?.split(',')[0];
     const country = d.address?.country || '';
     return { city, country };
   } catch {
@@ -48,7 +50,7 @@ export async function detectLocation() {
       const { latitude: lat, longitude: lon } = pos.coords;
       const { city, country } = await reverseGeocodeCity(lat, lon);
       return { city, lat, lon, country };
-    } catch { /* denied or timed out — fall through */ }
+    } catch { /* denied or timeout — fall through */ }
   }
 
   // 2. Server-side IP detection (bypasses ad blockers)
@@ -57,37 +59,41 @@ export async function detectLocation() {
     return { city: data.city, lat: data.lat, lon: data.lon, country: data.country || '' };
   } catch { /* fall through */ }
 
-  // 3. Last resort
   throw new Error('Could not detect location');
 }
 
-// Keep old name as alias for backward compat
 export const detectCityFromIP = detectLocation;
 
-async function authFetch(path, options = {}) {
-  const token = await getAccessToken();
-  if (!token) throw new Error('Not authenticated');
-  return apiFetch(path, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...options.headers,
-    },
-  });
+// ── Saved places — localStorage (no auth required) ─────────────────────────────
+
+const PLACES_KEY = 'wn_saved_places';
+
+function readPlaces() {
+  try { return JSON.parse(localStorage.getItem(PLACES_KEY) || '[]'); }
+  catch { return []; }
 }
 
-export async function fetchPlaces() {
-  return authFetch('/api/places');
+export function fetchPlaces() {
+  return Promise.resolve(readPlaces());
 }
 
-export async function savePlace(city_name, lat, lon) {
-  return authFetch('/api/places', {
-    method: 'POST',
-    body: JSON.stringify({ city_name, lat, lon }),
-  });
+export function savePlace(city_name, lat, lon) {
+  const places = readPlaces();
+  if (places.some(p => p.city_name === city_name)) {
+    return Promise.reject(new Error(`${city_name} is already saved`));
+  }
+  const place = {
+    id: Date.now().toString(),
+    city_name,
+    lat: Number(lat),
+    lon: Number(lon),
+    created_at: new Date().toISOString(),
+  };
+  localStorage.setItem(PLACES_KEY, JSON.stringify([place, ...places]));
+  return Promise.resolve(place);
 }
 
-export async function deletePlace(id) {
-  return authFetch(`/api/places?id=${id}`, { method: 'DELETE' });
+export function deletePlace(id) {
+  localStorage.setItem(PLACES_KEY, JSON.stringify(readPlaces().filter(p => p.id !== id)));
+  return Promise.resolve({ success: true });
 }
