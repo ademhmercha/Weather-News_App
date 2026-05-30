@@ -165,48 +165,37 @@ export default function Home() {
         style={{ background: getAtmosphereOverlay(code, isDay) }} />
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
-      {/* ── Top action bar (buttons only) ── */}
-      <div className="relative z-20 flex items-center justify-end gap-2 px-5 pt-4 pb-2">
-        <button onClick={() => { setShowSearch(s => !s); setShowPlaces(false); }}
-          className="p-2 rounded-xl bg-black/25 backdrop-blur hover:bg-black/40 text-white/70 hover:text-white transition-all">
-          <Search size={15} />
-        </button>
-        <button onClick={() => { setShowPlaces(s => !s); setShowSearch(false); }}
-          className="px-3 py-2 rounded-xl bg-black/25 backdrop-blur hover:bg-black/40 text-white/60 hover:text-white text-xs font-medium transition-all">
-          Saved
-        </button>
-        <button onClick={handleSave} disabled={saving || saved}
-          className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl border transition-all disabled:opacity-50 backdrop-blur ${
-            saved ? 'bg-blue-500/25 border-blue-400/35 text-blue-300' : 'bg-black/25 border-white/15 text-white/60 hover:text-white hover:bg-black/40'
-          }`}>
-          {saved ? <BookmarkCheck size={13} /> : <Bookmark size={13} />}
-          {saved ? 'Saved' : saving ? '…' : 'Save'}
-        </button>
-      </div>
+      {/* ── City photo — background at top, clearly visible ── */}
+      {cityImage && (
+        <div className="absolute inset-x-0 top-0 h-52 overflow-hidden pointer-events-none">
+          <img src={cityImage} alt="" className="w-full h-full object-cover"
+            style={{ opacity: 0.35 }} />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/90" />
+        </div>
+      )}
 
-      {/* ── City photo card — always clearly visible ── */}
-      <div className="relative z-20 mx-4 sm:mx-5 mb-4 rounded-2xl overflow-hidden"
-        style={{ height: '170px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-        {cityImage ? (
-          <img
-            src={cityImage}
-            alt={location?.city}
-            className="w-full h-full object-cover"
-            style={{ filter: 'brightness(0.85) saturate(1.1)' }}
-          />
-        ) : (
-          /* Placeholder while image loads or unavailable */
-          <div className="w-full h-full"
-            style={{ background: 'linear-gradient(135deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.01) 100%)' }} />
-        )}
-        {/* Gradient overlay for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-        {/* City name at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-3">
-          <h1 className="text-white text-2xl font-bold leading-tight drop-shadow-lg">
-            {location?.city ?? '—'}
-          </h1>
-          <p className="text-white/60 text-xs mt-0.5 tracking-wide">{location?.country}</p>
+      {/* ── Top bar ── */}
+      <div className="relative z-20 flex items-center justify-between px-5 pt-5 pb-3">
+        <div>
+          <h1 className="text-white text-xl font-semibold drop-shadow">{location?.city ?? '—'}</h1>
+          <p className="text-white/50 text-xs">{location?.country}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => { setShowSearch(s => !s); setShowPlaces(false); }}
+            className="p-2 rounded-xl bg-black/25 backdrop-blur hover:bg-black/40 text-white/70 hover:text-white transition-all">
+            <Search size={15} />
+          </button>
+          <button onClick={() => { setShowPlaces(s => !s); setShowSearch(false); }}
+            className="px-3 py-2 rounded-xl bg-black/25 backdrop-blur hover:bg-black/40 text-white/60 hover:text-white text-xs font-medium transition-all">
+            Saved
+          </button>
+          <button onClick={handleSave} disabled={saving || saved}
+            className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl border transition-all disabled:opacity-50 backdrop-blur ${
+              saved ? 'bg-blue-500/25 border-blue-400/35 text-blue-300' : 'bg-black/25 border-white/15 text-white/60 hover:text-white hover:bg-black/40'
+            }`}>
+            {saved ? <BookmarkCheck size={13} /> : <Bookmark size={13} />}
+            {saved ? 'Saved' : saving ? '…' : 'Save'}
+          </button>
         </div>
       </div>
 
