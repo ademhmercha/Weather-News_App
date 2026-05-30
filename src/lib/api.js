@@ -45,25 +45,44 @@ async function reverseGeocodeCity(lat, lon) {
 }
 
 export async function detectLocation() {
-  // 1. Browser Geolocation (most accurate, not blocked by ad blockers)
+  // 1. Browser Geolocation — longer timeout + accept cached position for mobile
   if (typeof navigator !== 'undefined' && navigator.geolocation) {
     try {
       const pos = await new Promise((resolve, reject) =>
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 6000 })
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          timeout: 12000,
+          maximumAge: 120000,       // accept a position up to 2 min old (instant on mobile)
+          enableHighAccuracy: false, // faster — uses WiFi/cell tower, good enough for city
+        })
       );
       const { latitude: lat, longitude: lon } = pos.coords;
       const { city, country } = await reverseGeocodeCity(lat, lon);
-      return { city, lat, lon, country };
+      return { city, lat, lon, country, source: 'gps' };
     } catch { /* denied or timeout — fall through */ }
   }
 
   // 2. Server-side IP detection (bypasses ad blockers)
   try {
     const data = await apiFetch('/api/detect-city');
-    return { city: data.city, lat: data.lat, lon: data.lon, country: data.country || '' };
+    return { city: data.city, lat: data.lat, lon: data.lon, country: data.country || '', source: 'ip' };
   } catch { /* fall through */ }
 
   throw new Error('Could not detect location');
+}
+
+// Called when user explicitly taps "Enable GPS" — forces a fresh high-accuracy fix
+export async function requestGPSLocation() {
+  if (!('geolocation' in navigator)) throw new Error('Geolocation not supported');
+  const pos = await new Promise((resolve, reject) =>
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      timeout: 20000,
+      maximumAge: 0,        // force fresh position
+      enableHighAccuracy: true, // use GPS chip on mobile
+    })
+  );
+  const { latitude: lat, longitude: lon } = pos.coords;
+  const { city, country } = await reverseGeocodeCity(lat, lon);
+  return { city, lat, lon, country, source: 'gps' };
 }
 
 export const detectCityFromIP = detectLocation;
