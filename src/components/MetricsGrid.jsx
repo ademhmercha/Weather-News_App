@@ -32,14 +32,14 @@ export default function MetricsGrid({ weather, inline = false }) {
 
   if (inline) {
     return (
-      <div className="px-4 mb-2">
-        <div className="rounded-2xl px-4 py-3 flex flex-wrap justify-center gap-x-6 gap-y-2"
+      <div className="mb-1">
+        <div className="rounded-2xl px-3 py-3 grid grid-cols-2 sm:flex sm:flex-wrap sm:justify-center gap-x-4 gap-y-2.5 sm:gap-x-6"
           style={{ background: 'rgba(0,0,0,0.20)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.07)' }}>
           {stats.map(({ Icon, label, value }) => (
-            <div key={label} className="flex items-center gap-1.5">
+            <div key={label} className="flex items-center gap-1.5 min-w-0">
               <Icon size={13} className="text-white/40 flex-shrink-0" />
-              <span className="text-white/50 text-xs">{label}</span>
-              <span className="text-white text-xs font-semibold">{value}</span>
+              <span className="text-white/45 text-xs truncate">{label}</span>
+              <span className="text-white text-xs font-semibold truncate">{value}</span>
             </div>
           ))}
         </div>

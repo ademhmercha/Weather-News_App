@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, useMapEvents, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { X, Bookmark, Wind, Navigation, Search } from 'lucide-react';
+import { X, Bookmark, Wind, Navigation, Search, ChevronDown } from 'lucide-react';
 import { fetchWeather, fetchNews, savePlace, detectLocation } from '../lib/api';
 import { getWeatherLabel } from '../lib/weatherIcons';
 import WeatherIcon from '../components/WeatherIcon';
@@ -12,17 +12,17 @@ import LoadingSpinner from '../components/LoadingSpinner';
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconUrl:       'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-function pin(color, pulse = false) {
+function createPin(color, pulse = false) {
   return L.divIcon({
     html: `<div style="position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center">
-      ${pulse ? `<div style="position:absolute;width:32px;height:32px;border-radius:50%;background:${color};opacity:0.25;animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite"></div>` : ''}
+      ${pulse ? `<div style="position:absolute;width:32px;height:32px;border-radius:50%;background:${color};opacity:.22;animation:ping 1.5s cubic-bezier(0,0,.2,1) infinite"></div>` : ''}
       <svg width="26" height="34" viewBox="0 0 24 32" fill="none">
         <path d="M12 0C5.37 0 0 5.37 0 12c0 9 12 20 12 20S24 21 24 12C24 5.37 18.63 0 12 0Z" fill="${color}"/>
-        <circle cx="12" cy="12" r="5" fill="white" fill-opacity="0.9"/>
+        <circle cx="12" cy="12" r="5" fill="white" fill-opacity=".9"/>
       </svg>
     </div>`,
     className: '',
@@ -46,17 +46,16 @@ function FlyTo({ center, zoom }) {
 }
 
 export default function MapPage() {
-  const [pins, setPins]               = useState([]);
-  const [myLocation, setMyLocation]   = useState(null);
-  const [flyTarget, setFlyTarget]     = useState(null);
-  const [activePin, setActivePin]     = useState(null);
-  const [panel, setPanel]             = useState(null);
+  const [pins, setPins]             = useState([]);
+  const [myLocation, setMyLocation] = useState(null);
+  const [flyTarget, setFlyTarget]   = useState(null);
+  const [activePin, setActivePin]   = useState(null);
+  const [panel, setPanel]           = useState(null);
   const [panelLoading, setPanelLoading] = useState(false);
-  const [locating, setLocating]       = useState(true);
-  const [searchOpen, setSearchOpen]   = useState(false);
+  const [locating, setLocating]     = useState(true);
+  const [searchOpen, setSearchOpen] = useState(false);
   const mapRef = useRef(null);
 
-  // On mount: fly to user's real location
   useEffect(() => {
     detectLocation()
       .then(loc => {
@@ -74,8 +73,9 @@ export default function MapPage() {
         { headers: { 'User-Agent': 'WeatherNewsApp/1.0' } }
       );
       const d = await r.json();
-      const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || d.display_name?.split(',')[0] || `${lat.toFixed(2)},${lon.toFixed(2)}`;
-      return { city, country: d.address?.country || '' };
+      const city    = d.address?.city || d.address?.town || d.address?.village || d.address?.county || d.display_name?.split(',')[0] || `${lat.toFixed(2)},${lon.toFixed(2)}`;
+      const country = d.address?.country || '';
+      return { city, country };
     } catch {
       return { city: `${lat.toFixed(2)},${lon.toFixed(2)}`, country: '' };
     }
@@ -93,7 +93,7 @@ export default function MapPage() {
         fetchWeather(lat, lon),
         fetchNews(city, country).catch(() => ({ articles: [], label: '' })),
       ]);
-      setPanel({ city, country, lat, lon, weather: wx, news: news.articles || [], newsLabel: news.label || city });
+      setPanel({ city, lat, lon, weather: wx, news: news.articles || [], newsLabel: news.label || city });
     } catch (e) { setPanel({ error: e.message }); }
     finally { setPanelLoading(false); }
   }
@@ -125,39 +125,46 @@ export default function MapPage() {
     catch (e) { alert(e.message); }
   }
 
+  function closePanel() { setPanel(null); setActivePin(null); }
+
+  const hasPanel = panelLoading || panel;
+
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">
+    // pb-16 lg:pb-0 gives space for mobile bottom nav
+    <div className="relative flex flex-col lg:flex-row h-[calc(100dvh-0px)] lg:h-[calc(100vh-0px)] pb-16 lg:pb-0">
 
-      {/* Map area */}
-      <div className="flex-1 relative">
+      {/* Map */}
+      <div className="flex-1 relative min-h-0">
 
-        {/* Floating search bar */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-80 max-w-[90vw]">
+        {/* Search bar */}
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] w-[min(340px,calc(100vw-32px))]">
           {searchOpen ? (
             <div className="animate-fade-in">
-              <SearchBar onSelect={handleSearch} placeholder="Search any city..." />
+              <SearchBar onSelect={handleSearch} placeholder="Search Tunisian city..." />
             </div>
           ) : (
             <button
               onClick={() => setSearchOpen(true)}
-              className="w-full glass-raised rounded-xl px-4 py-2.5 flex items-center gap-2.5 text-slate-400 hover:text-slate-200 transition-colors text-sm shadow-2xl"
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/60 hover:text-white transition-colors rounded-xl shadow-2xl"
+              style={{ background:'rgba(5,8,14,0.75)', backdropFilter:'blur(16px)', border:'1px solid rgba(255,255,255,0.10)' }}
             >
               <Search size={14} />
-              <span>Search a city...</span>
+              Search a city...
             </button>
           )}
         </div>
 
-        {/* Locate me button */}
-        <div className="absolute bottom-8 right-4 z-[1000]">
+        {/* Locate me — top-right on mobile, bottom-right on desktop */}
+        <div className="absolute top-3 right-3 lg:top-auto lg:bottom-8 lg:right-4 z-[1000]">
           <button
             onClick={locateMe}
             disabled={locating}
-            className="glass-raised rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm text-slate-300 hover:text-white transition-all shadow-2xl disabled:opacity-50"
-            title="Back to my location"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-white/80 hover:text-white transition-all shadow-2xl disabled:opacity-50"
+            style={{ background:'rgba(5,8,14,0.75)', backdropFilter:'blur(16px)', border:'1px solid rgba(255,255,255,0.10)' }}
+            title="My location"
           >
-            <Navigation size={15} className={locating ? 'animate-pulse' : ''} />
-            {locating ? 'Locating...' : myLocation?.city ?? 'My location'}
+            <Navigation size={14} className={locating ? 'animate-pulse' : ''} />
+            <span className="hidden sm:inline">{locating ? 'Locating...' : (myLocation?.city ?? 'My location')}</span>
           </button>
         </div>
 
@@ -172,52 +179,65 @@ export default function MapPage() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-
           {flyTarget && <FlyTo center={flyTarget.center} zoom={flyTarget.zoom} />}
           <ClickHandler onMapClick={loadPin} />
-
-          {/* My location pin */}
           {myLocation && (
-            <Marker
-              position={[myLocation.lat, myLocation.lon]}
-              icon={pin('#10b981', true)}
-            />
+            <Marker position={[myLocation.lat, myLocation.lon]} icon={createPin('#10b981', true)} />
           )}
-
-          {/* Clicked pins */}
           {pins.map(p => (
             <Marker
               key={p.id}
               position={[p.lat, p.lon]}
-              icon={pin(p.id === activePin ? '#3b82f6' : '#64748b')}
+              icon={createPin(p.id === activePin ? '#3b82f6' : '#64748b')}
               eventHandlers={{ click: () => loadPin(p.lat, p.lon) }}
             />
           ))}
         </MapContainer>
 
-        {/* Click hint */}
         {!pins.length && !locating && (
-          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-[999] pointer-events-none">
-            <div className="glass rounded-xl px-5 py-2.5 text-slate-400 text-sm whitespace-nowrap">
-              Click anywhere to see weather &amp; news
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[999] pointer-events-none">
+            <div className="px-4 py-2.5 rounded-xl text-white/50 text-sm whitespace-nowrap"
+              style={{ background:'rgba(5,8,14,0.65)', backdropFilter:'blur(12px)' }}>
+              Tap anywhere to see weather &amp; news
             </div>
           </div>
         )}
       </div>
 
-      {/* Side panel */}
-      {(panelLoading || panel) && (
-        <aside className="w-80 lg:w-[390px] flex-shrink-0 bg-slate-950 border-l border-white/[0.06] overflow-y-auto flex flex-col">
-          {panelLoading ? (
-            <div className="flex-1 flex items-center justify-center">
-              <LoadingSpinner label="Loading location data" />
+      {/* Panel — right side on desktop, bottom sheet on mobile */}
+      {hasPanel && (
+        <>
+          {/* Mobile backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 z-[1500] lg:hidden"
+            onClick={closePanel}
+          />
+
+          <aside className={`
+            fixed inset-x-0 bottom-0 z-[2000] rounded-t-3xl
+            max-h-[75dvh] overflow-y-auto flex flex-col
+            lg:relative lg:inset-auto lg:bottom-auto lg:top-0
+            lg:w-80 xl:w-[390px] lg:rounded-none lg:max-h-full lg:z-auto
+            lg:border-l
+          `}
+            style={{ background:'rgba(7,8,15,0.97)', backdropFilter:'blur(24px)', borderTop:'1px solid rgba(255,255,255,0.08)', borderColor:'rgba(255,255,255,0.06)' }}
+          >
+            {/* Drag handle — mobile only */}
+            <div className="flex justify-center pt-3 pb-1 lg:hidden flex-shrink-0">
+              <div className="w-10 h-1 rounded-full bg-white/20" />
             </div>
-          ) : panel?.error ? (
-            <div className="p-5 text-red-400 text-sm">{panel.error}</div>
-          ) : panel ? (
-            <Panel data={panel} onSave={handleSave} onClose={() => { setPanel(null); setActivePin(null); }} />
-          ) : null}
-        </aside>
+
+            {panelLoading ? (
+              <div className="flex-1 flex items-center justify-center py-12">
+                <LoadingSpinner label="Loading location data..." />
+              </div>
+            ) : panel?.error ? (
+              <div className="p-5 text-red-400 text-sm">{panel.error}</div>
+            ) : panel ? (
+              <Panel data={panel} onSave={handleSave} onClose={closePanel} />
+            ) : null}
+          </aside>
+        </>
       )}
     </div>
   );
@@ -228,11 +248,11 @@ function Panel({ data, onSave, onClose }) {
   const cw = weather?.current_weather;
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-start justify-between gap-3 p-5 border-b border-white/[0.05]">
+    <div className="flex flex-col flex-1">
+      <div className="flex items-start justify-between gap-3 p-4 border-b border-white/[0.05]">
         <div>
-          <h2 className="text-slate-100 font-semibold text-base">{city}</h2>
-          <p className="text-slate-600 text-xs mt-0.5">{lat.toFixed(4)}, {lon.toFixed(4)}</p>
+          <h2 className="text-white font-semibold text-base">{city}</h2>
+          <p className="text-white/40 text-xs mt-0.5">{lat.toFixed(4)}, {lon.toFixed(4)}</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <button onClick={onSave}
@@ -240,22 +260,22 @@ function Panel({ data, onSave, onClose }) {
             <Bookmark size={12} /> Save
           </button>
           <button onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-800 transition-colors">
+            className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors">
             <X size={16} />
           </button>
         </div>
       </div>
 
       {cw && (
-        <div className="p-5 border-b border-white/[0.05]">
+        <div className="p-4 border-b border-white/[0.05]">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-end gap-1">
-                <span className="text-5xl font-thin text-slate-100">{Math.round(cw.temperature)}</span>
-                <span className="text-xl text-slate-500 mb-1.5">°C</span>
+                <span className="text-5xl font-thin text-white">{Math.round(cw.temperature)}</span>
+                <span className="text-xl text-white/40 mb-1.5">°C</span>
               </div>
-              <p className="text-slate-400 text-sm mt-1">{getWeatherLabel(cw.weathercode)}</p>
-              <p className="text-slate-600 text-xs mt-1 flex items-center gap-1">
+              <p className="text-white/50 text-sm mt-1">{getWeatherLabel(cw.weathercode)}</p>
+              <p className="text-white/30 text-xs mt-0.5 flex items-center gap-1">
                 <Wind size={11} /> {Math.round(cw.windspeed)} km/h
               </p>
             </div>
@@ -264,11 +284,11 @@ function Panel({ data, onSave, onClose }) {
         </div>
       )}
 
-      <div className="flex-1 p-5 overflow-y-auto">
+      <div className="flex-1 p-4 overflow-y-auto">
         <div className="flex items-center gap-2 mb-3">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">News</p>
+          <p className="text-white/35 text-[10px] font-semibold uppercase tracking-widest">News</p>
           {newsLabel && newsLabel !== city && (
-            <span className="text-xs text-slate-700">— {newsLabel}</span>
+            <span className="text-white/25 text-[10px]">— {newsLabel}</span>
           )}
         </div>
         <div className="space-y-2">

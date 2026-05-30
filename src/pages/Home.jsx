@@ -236,21 +236,21 @@ export default function Home() {
           ) : error ? (
             <div className="mx-5 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm">{error}</div>
           ) : (
-            <div className="px-5 space-y-3 animate-fade-in pb-6">
+            <div className="px-4 sm:px-5 space-y-3 animate-fade-in pb-24 lg:pb-8">
 
-              {/* ── Hero: icon + temp + condition + summary (compact) ── */}
-              <div className="flex items-center gap-5 py-3">
-                <WeatherIcon code={code} size={90} className="flex-shrink-0 drop-shadow-2xl" />
+              {/* ── Hero: icon + temp + condition + summary ── */}
+              <div className="flex items-center gap-4 py-2">
+                <WeatherIcon code={code} size={80} className="flex-shrink-0 drop-shadow-2xl" />
                 <div>
                   <div className="flex items-start leading-none">
-                    <span className="text-white font-thin" style={{ fontSize:'clamp(72px,12vw,108px)', lineHeight:'1' }}>
+                    <span className="text-white font-thin" style={{ fontSize:'clamp(64px,15vw,100px)', lineHeight:'1' }}>
                       {temp}
                     </span>
-                    <span className="text-white/50 text-2xl font-light mt-3 ml-1">°C</span>
+                    <span className="text-white/50 text-xl font-light mt-2.5 ml-1">°C</span>
                   </div>
-                  <p className="text-white/90 text-lg font-light mt-1">{getWeatherLabel(code)}</p>
+                  <p className="text-white/90 text-base font-light mt-0.5">{getWeatherLabel(code)}</p>
                   {summary && (
-                    <p className="text-white/45 text-xs mt-1.5 leading-relaxed max-w-[240px]">{summary}</p>
+                    <p className="text-white/45 text-xs mt-1.5 leading-relaxed" style={{ maxWidth:'min(240px,55vw)' }}>{summary}</p>
                   )}
                 </div>
               </div>
@@ -284,7 +284,7 @@ export default function Home() {
 
       {/* ── NEWS TAB ── */}
       {tab === 'news' && (
-        <div className="relative z-10 flex-1 px-5 pb-6 animate-fade-in">
+        <div className="relative z-10 flex-1 px-4 sm:px-5 pb-24 lg:pb-8 animate-fade-in">
           <p className="text-white/40 text-[10px] font-semibold uppercase tracking-widest mb-4 mt-1">
             Latest — {location?.city}
           </p>

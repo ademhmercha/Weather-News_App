@@ -10,9 +10,18 @@
     font-feature-settings: 'cv02','cv03','cv04','cv11';
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
+    /* Prevent double-tap zoom on mobile */
+    touch-action: manipulation;
   }
 
-  body { @apply bg-slate-950 text-slate-100; }
+  body {
+    @apply bg-slate-950 text-slate-100;
+    /* Prevent overscroll bounce on iOS */
+    overscroll-behavior: none;
+  }
+
+  /* Improve tap highlight on mobile */
+  a, button { -webkit-tap-highlight-color: transparent; }
 
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
