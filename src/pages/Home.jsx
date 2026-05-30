@@ -12,6 +12,7 @@ import SavedPlaces from '../components/SavedPlaces';
 import NewsCard from '../components/NewsCard';
 import SearchBar from '../components/SearchBar';
 import LoadingSpinner from '../components/LoadingSpinner';
+import SplashScreen from '../components/SplashScreen';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -73,10 +74,13 @@ export default function Home() {
   const [tab, setTab]                 = useState('weather');
   const [showSearch, setShowSearch]   = useState(false);
   const [showPlaces, setShowPlaces]   = useState(false);
-  const [refreshKey, setRefreshKey]   = useState(0);
+  const [refreshKey, setRefreshKey]     = useState(0);
+  const [splashVisible, setSplashVisible] = useState(true);
+  const [splashStatus, setSplashStatus]   = useState('Detecting your location…');
 
   const loadData = useCallback(async (loc) => {
     setLoading(true); setNewsLoading(true); setError(null); setSaved(false);
+    setSplashStatus(`Loading weather for ${loc.city}…`);
     try {
       const [wx, aq] = await Promise.all([
         fetchWeather(loc.lat, loc.lon),
@@ -85,7 +89,11 @@ export default function Home() {
       setWeather(wx);
       setAqiData(aq);
     } catch (e) { setError(e.message); }
-    finally { setLoading(false); }
+    finally {
+      setLoading(false);
+      // Hide splash once weather is loaded — min 1s total display time
+      setTimeout(() => setSplashVisible(false), 400);
+    }
     try {
       const n = await fetchNews(loc.city, loc.country ?? '');
       setNews(n.articles || []);
@@ -145,6 +153,9 @@ export default function Home() {
   const sky     = getSkyStyle(code, isDay);
 
   return (
+    <>
+      <SplashScreen visible={splashVisible} status={splashStatus} />
+
     <div className="relative min-h-screen flex flex-col overflow-hidden" style={{ background: sky.bg }}>
       {/* Animated background layer */}
       <WeatherBackground code={code} isDay={isDay} />
@@ -300,5 +311,6 @@ export default function Home() {
         </div>
       )}
     </div>
+    </>
   );
 }

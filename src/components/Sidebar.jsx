@@ -29,7 +29,18 @@ export default function Sidebar() {
         borderRight: '1px solid rgba(255,255,255,0.05)',
       }}
     >
-      <div className="w-9 h-9 rounded-xl bg-blue-500 flex items-center justify-center mb-6 shadow-lg shadow-blue-500/30 flex-shrink-0">
+      <img
+        src="/logo.png"
+        alt="WeatherNews"
+        className="w-10 h-10 rounded-xl mb-6 flex-shrink-0"
+        style={{ boxShadow: '0 4px 16px rgba(37,99,235,.4)' }}
+        onError={e => {
+          e.currentTarget.style.display = 'none';
+          e.currentTarget.nextSibling.style.display = 'flex';
+        }}
+      />
+      {/* Fallback if logo.png not found */}
+      <div className="w-10 h-10 rounded-xl bg-blue-500 items-center justify-center mb-6 shadow-lg shadow-blue-500/30 flex-shrink-0" style={{ display: 'none' }}>
         <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
           <path d="M7 1C7 1 2 5.5 2 8.5a5 5 0 0 0 10 0C12 5.5 7 1 7 1Z" fill="white" />
         </svg>
