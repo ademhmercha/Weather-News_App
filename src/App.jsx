@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import Home from './pages/Home';
@@ -25,6 +26,8 @@ export default function App() {
 
       {/* Bottom nav — mobile only */}
       <BottomNav />
+
+      <Analytics />
     </BrowserRouter>
   );
 }

@@ -13,6 +13,7 @@
   "dependencies": {
     "@sentry/react": "^10.69.0",
     "@supabase/supabase-js": "^2.106.2",
+    "@vercel/analytics": "^2.0.1",
     "fast-xml-parser": "^5.8.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.17.0",
