@@ -21,9 +21,6 @@ Sentry.init({
   enableLogs: true,
 });
 
-// Temporary: for generating demo/test events in the console — remove after.
-window.Sentry = Sentry;
-
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Sentry.ErrorBoundary fallback={<p>Une erreur est survenue. Merci de recharger la page.</p>}>

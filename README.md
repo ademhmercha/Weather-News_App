@@ -2,6 +2,8 @@
 
 Real-time weather forecasts and local Tunisian news, deployed on Vercel.
 
+[![CI](https://github.com/ademhmercha/Weather-News_App/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ademhmercha/Weather-News_App/actions/workflows/ci.yml)
+
 **Live:** https://weather-news-app-gray.vercel.app
 
 ---
@@ -259,6 +261,28 @@ score = round(min(100, tempScore + humScore + uvScore + rainScore + windScore))
   }
 }
 ```
+
+---
+
+## DevOps & Monitoring
+
+| Concern | Tool | Notes |
+|---------|------|-------|
+| Continuous Integration | GitHub Actions | Build, ESLint, Vitest and `npm audit` run on every push and PR to `main` |
+| Continuous Deployment | Vercel | Auto-deploy on push to `main` |
+| Error monitoring | Sentry | Captures unhandled exceptions and session replays in production |
+| Usage & performance monitoring | Vercel Analytics | Page views and Core Web Vitals |
+| Availability monitoring | UptimeRobot | Pings the frontend and `/api/health` every 5 minutes |
+
+### Screenshots
+
+![GitHub Actions CI pipeline](screenshots/devops-ci-actions.png)
+
+![Sentry captured issue](screenshots/devops-sentry-issue.png)
+
+![Vercel Analytics dashboard](screenshots/devops-vercel-analytics.png)
+
+![UptimeRobot monitors](screenshots/devops-uptimerobot.png)
 
 ---
 
