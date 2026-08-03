@@ -10,8 +10,6 @@ export default function SavedPlaces({ onSelectPlace }) {
   const [weathers, setWeathers] = useState({});
   const [wxLoading, setWxLoading] = useState(false);
 
-  useEffect(() => { load(); }, []);
-
   async function load() {
     const data = await fetchPlaces();
     setPlaces(data);
@@ -23,6 +21,8 @@ export default function SavedPlaces({ onSelectPlace }) {
     setWeathers(map);
     setWxLoading(false);
   }
+
+  useEffect(() => { load(); }, []);
 
   function onDelete(e, id) {
     e.stopPropagation();

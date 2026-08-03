@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, useMapEvents, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { X, Bookmark, Wind, Navigation, Search, ChevronDown } from 'lucide-react';
+import { X, Bookmark, Wind, Navigation, Search } from 'lucide-react';
 import { fetchWeather, fetchNews, savePlace, detectLocation } from '../lib/api';
 import { getWeatherLabel } from '../lib/weatherIcons';
 import WeatherIcon from '../components/WeatherIcon';
